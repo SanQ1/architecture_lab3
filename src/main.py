@@ -3,7 +3,11 @@ from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_jwt_extended import JWTManager
 from src.infrastructure.models import db
-from src.presentation.controllers import bp as api_bp
+from src.presentation.controllers import api_bp
+from src.infrastructure.unit_of_work import SQLAlchemyUnitOfWork
+from src.domain.factories.order_factory import OrderFactory
+from src.domain.factories.user_factory import UserFactory
+from src.infrastructure.repositories import PostgresUserRepository, PostgresOrderRepository
 
 def create_app():
     app = Flask(__name__)
@@ -15,6 +19,19 @@ def create_app():
 
     db.init_app(app)
     jwt = JWTManager(app)
+
+    user_repo = PostgresUserRepository(session=db.session)
+    order_repo = PostgresOrderRepository(session=db.session)
+
+    user_factory = UserFactory(user_repo=user_repo)
+    order_factory = OrderFactory(order_repo=order_repo, user_repo=user_repo)
+
+    uow = SQLAlchemyUnitOfWork() 
+    
+    app.db = db
+    app.uow = uow
+    app.user_factory = user_factory
+    app.order_factory = order_factory
 
     app.register_blueprint(api_bp, url_prefix='/api/v1')
 
