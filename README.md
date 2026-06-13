@@ -10,16 +10,21 @@
 ## Ручне тестування
 Реєстрація:
 ```bash
-curl -X POST http://localhost:5000/api/v1/register \
+curl -X POST http://localhost:5000/api/v1/users/register \
      -H "Content-Type: application/json" \
      -d '{"username": "testuser", "password": "password123"}'
 ```
 
 Вхід та зберігання токена в змінну середовища:
 ```bash
-TOKEN=$(curl -s -X POST http://localhost:5000/api/v1/login \
+TOKEN=$(curl -s -X POST http://localhost:5000/api/v1/users/login \
      -H "Content-Type: application/json" \
      -d '{"username": "testuser", "password": "password123"}' | python3 -c "import sys, json; print(json.load(sys.stdin)['access_token'])")
+```
+
+Отримання даних про свого користувача:
+```bash
+curl -i -X GET http://localhost:5000/api/v1/users/me -H "Authorization: Bearer $TOKEN"
 ```
 
 Перегляд товарів:
@@ -58,8 +63,8 @@ curl -X DELETE http://localhost:5000/api/v1/orders/1 \
 Додавання товару без токена(приведе до помилки):
 ```bash
 curl -X POST http://localhost:5000/api/v1/products \
-     -H "Content-Type: application/json" \
-     -d '{"name": "Mouse", "price": 3000}'
+    -H "Content-Type: application/json" \
+    -d '{"name": "Mouse", "price": 3000}'
 ```
 
 ## Unit-тести та інтеграційні тести
