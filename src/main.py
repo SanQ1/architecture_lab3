@@ -8,10 +8,12 @@ from src.infrastructure.unit_of_work import SQLAlchemyUnitOfWork
 from src.domain.factories.order_factory import OrderFactory
 from src.domain.factories.user_factory import UserFactory
 from src.infrastructure.repositories import PostgresUserRepository, PostgresOrderRepository
+from src.config import Config
 
-def create_app():
+def create_app(config_class=Config):
     app = Flask(__name__)
     app.json.ensure_ascii = False
+    app.config.from_object(config_class)
 
     app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'postgresql://user:password@localhost/db')
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -35,8 +37,9 @@ def create_app():
 
     app.register_blueprint(api_bp, url_prefix='/api/v1')
 
-    with app.app_context():
-        db.create_all()
+    if not app.config.get("TESTING"):
+        with app.app_context():
+            db.create_all()
 
     return app
 

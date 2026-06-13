@@ -3,11 +3,8 @@
 source venv/bin/activate
 export PYTHONPATH=$PYTHONPATH:.
 
-echo "=== Unit-тести домену ==="
-pytest tests/domain
+echo "=== Тестування домену та команд. ==="
+pytest tests/unit
 
-echo "=== Unit-тести Application layer ==="
-pytest tests/application
-
-echo "=== Integraion тести ==="
+echo "=== Тестування запитів. ==="
 pytest tests/integration

@@ -1,63 +1,67 @@
 import pytest
-from src.main import db, app 
-from unittest.mock import Mock, MagicMock
-from src.application.handlers import ProductHandler, OrderHandler
 from sqlalchemy import create_engine
-from src.infrastructure.models import Base
-from src.infrastructure.models import UserEntity, ProductEntity, OrderEntity
-from flask_jwt_extended import create_access_token
 from sqlalchemy.orm import sessionmaker, scoped_session
 from sqlalchemy.pool import StaticPool
+from flask_jwt_extended import create_access_token
+
+from src.main import create_app
+from src.config import TestConfig
+from src.infrastructure.models import db, Base, UserEntity, ProductEntity
+
+@pytest.fixture(scope="session")
+def app():
+    app = create_app(config_class=TestConfig)
+    from src.domain.factories.user_factory import UserFactory
+    from src.infrastructure.repositories import PostgresUserRepository
+
+    new_user_repo = PostgresUserRepository(db.session)
+    app.user_factory = UserFactory(user_repo=new_user_repo)
+
+    return app
+
 
 @pytest.fixture
-def db_session():
-    engine = create_engine(
-        "sqlite:///:memory:",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool
-    )
-
-    Base.metadata.create_all(engine)
-
-    session_factory = sessionmaker(bind=engine)
-    scoped = scoped_session(session_factory)
-
-    db.session = scoped
-
-    yield scoped()
-
-    scoped.remove()
-    Base.metadata.drop_all(engine)
-    engine.dispose()
-
-@pytest.fixture
-def auth_headers():
-    """Повертає словник із заголовком Authorization для запитів."""
+def client(app):
+    """Create a test client with application context."""
     with app.app_context():
+        with app.test_client() as client:
+            yield client
+
+@pytest.fixture
+def db_session(app):
+    """Clean database session for each test."""
+    with app.app_context():
+        db.session.query(UserEntity).delete()
+        db.session.query(ProductEntity).delete()
+        db.session.commit()
+
+        connection = db.engine.connect()
+        transaction = connection.begin()
+
+        session = db.session
+        session.remove()
+        session.configure(bind=connection)
+
+        yield session
+
+        transaction.rollback()
+        connection.close()
+        session.remove()
+
+@pytest.fixture
+def auth_headers(app, db_session):
+    """Create authentication headers and clean user."""
+    with app.app_context():
+        db_session.query(UserEntity).filter_by(username="testuser").delete()
+
+        user = UserEntity(id="test-user-id", username="testuser", password_hash="hash")
+        db_session.add(user)
+        db_session.commit()
+
         token = create_access_token(identity="test-user-id")
         return {"Authorization": f"Bearer {token}"}
 
 @pytest.fixture
-def client():
-    app.config['TESTING'] = True
-    with app.test_client() as client:
-        yield client
-
-@pytest.fixture
 def mock_uow():
-    """Фікстура для створення моку Unit of Work."""
-    uow = MagicMock()
-    uow.__enter__.return_value = uow 
-    return uow
-
-@pytest.fixture
-def product_handler(mock_uow):
-    """Фікстура для ProductHandler з уже підготовленим моком UoW."""
-    return ProductHandler(uow=mock_uow)
-
-@pytest.fixture
-def order_handler(mock_uow):
-    """Фікстура для OrderHandler."""
-    factory = Mock() 
-    return OrderHandler(uow=mock_uow, factory=factory)
-
+    from unittest.mock import MagicMock
+    return MagicMock()

@@ -37,3 +37,14 @@ if [ ! -d "src" ]; then
     echo "Помилка: Папку 'src' не знайдено."
     exit 1
 fi
+
+cat << EOF | sudo tee ./src/config.py
+class Config:
+    SQLALCHEMY_DATABASE_URI = "postgresql://user:password@localhost:5432/db"
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
+    TESTING = False
+
+class TestConfig(Config):
+    TESTING = True
+    SQLALCHEMY_DATABASE_URI = "sqlite:///:memory:"
+EOF
