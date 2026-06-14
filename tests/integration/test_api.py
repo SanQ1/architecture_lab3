@@ -10,9 +10,6 @@ def test_create_order_api_success(client, auth_headers, db_session):
     payload = {"items": ["Mouse"]}
     response = client.post('/api/v1/orders', json=payload, headers=auth_headers)
 
-    if response.status_code == 400:
-        print(response.get_json())
-
     assert response.status_code == 201
 
 def test_list_products_api(client, db_session):
